@@ -1,4 +1,6 @@
 @import '~antd/dist/antd.css';
+@import 'styles/App.css';
+@import "styles/Main.css";
 body {
   margin: 0;
   padding: 0;
