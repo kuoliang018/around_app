@@ -1,16 +1,14 @@
 import React from 'react';
 import { Form, Input, Button, message } from 'antd';
 import { API_ROOT } from '../constants';
+import { Link } from "react-router-dom";
 const FormItem = Form.Item;
-
 
 class RegistrationForm extends React.Component {
     state = {
         confirmDirty: false,
         autoCompleteResult: [],
     };
-
-
 
     handleSubmit = (e) => {
         e.preventDefault();
@@ -29,6 +27,7 @@ class RegistrationForm extends React.Component {
                     throw new Error(response.statusText);
                 }).then(() => {
                     message.success('Registration Succeed');
+                    this.props.history.push('./Login');
                 }).catch((e) => {
                     message.error('Registration Failed');
                     console.log(e);
@@ -86,10 +85,10 @@ class RegistrationForm extends React.Component {
         };
 
         return (
-            <Form onSubmit={this.handleSubmit}>
+            <Form onSubmit={this.handleSubmit} className="register">
                 <FormItem
                     {...formItemLayout}
-                    label="Username"
+                    label="username"
                 >
                     {getFieldDecorator('username', {
                         rules: [{ required: true, message: 'Please input your username!', whitespace: false }],
@@ -127,6 +126,7 @@ class RegistrationForm extends React.Component {
                 </FormItem>
                 <FormItem {...tailFormItemLayout}>
                     <Button type="primary" htmlType="submit">Register</Button>
+                    <p>I already have an account, go back to <Link to="/login">login</Link></p>
                 </FormItem>
             </Form>
         );
