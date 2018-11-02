@@ -1,7 +1,8 @@
 import React from 'react';
-import { Form, Icon, Input, Button } from 'antd';
+import { Form, Icon, Input, Button, message } from 'antd';
 import { Link } from 'react-router-dom';
-import '../styles/Login.css';
+import { API_ROOT } from '../constants';
+
 const FormItem = Form.Item;
 
 class NormalLoginForm extends React.Component {
@@ -9,7 +10,26 @@ class NormalLoginForm extends React.Component {
         e.preventDefault();
         this.props.form.validateFields((err, values) => {
             if (!err) {
-                console.log('Received values of form: ', values);
+                fetch(`${API_ROOT}/login`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        username: values.username,
+                        password: values.password,
+                    }),
+                }).then((response) => {
+                    if (response.ok) {
+                        return response.text();
+                    }
+                    throw new Error(response.statusText);
+                })
+                    .then((data) => {
+                        message.success('Login Success')
+                        this.props.handleLogin(data);
+                    })
+                    .catch((e) => {
+                        console.log(e)
+                        message.error('Login Failed.');
+                    });
             }
         });
     }
@@ -33,8 +53,6 @@ class NormalLoginForm extends React.Component {
                     )}
                 </FormItem>
                 <FormItem>
-
-
                     <Button type="primary" htmlType="submit" className="login-form-button">
                         Log in
                     </Button>
@@ -46,4 +64,3 @@ class NormalLoginForm extends React.Component {
 }
 
 export const Login = Form.create()(NormalLoginForm);
-
