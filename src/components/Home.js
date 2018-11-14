@@ -1,46 +1,52 @@
 import React from 'react';
-import { Tabs, Button, Spin} from 'antd';
-import {GEO_OPTIONS, POS_KEY, API_ROOT, AUTH_HEADER, TOKEN_KEY} from "../constants"
-import {Gallery} from "./Gallery"
-
+import { Tabs, Spin, Row, Col, Radio } from 'antd';
+import { GEO_OPTIONS, POS_KEY, API_ROOT, AUTH_HEADER, TOKEN_KEY } from '../constants';
+import { Gallery } from './Gallery';
+import { CreatePostButton } from './CreatePostButton';
+import { AroundMap } from './AroundMap';
 
 const TabPane = Tabs.TabPane;
+const RadioGroup = Radio.Group;
 
 export class Home extends React.Component {
     state = {
         isLoadingGeoLocation: false,
         error: '',
         isLoadingPosts: false,
-        posts: []
+        posts: [],
+        topic: 'around',
     }
-    componentDidMount(){
-        if('geolocation' in navigator) {
-            this.setState({isLoadingGeoLocation: true});
+
+    componentDidMount() {
+        if ("geolocation" in navigator) {
+            this.setState({ isLoadingGeoLocation: true, error: '' });
             navigator.geolocation.getCurrentPosition(
                 this.onSuccessLoadGeoLocation,
-                this.onFailLoadGeoLocation,
-                GEO_OPTIONS
-            );
-        }else{
-            this.setState({error: 'GeoLocation is not supported'});
+                this.onFailedLoadGeoLocation,
+                GEO_OPTIONS);
+        } else {
+            this.setState({ error: 'Geolocation is not supported.'});
         }
     }
-    onSuccessLoadGeoLocation =(position) => {
-        console.log(position);
-        const {latitude, longitude} = position.coords;
-        localStorage.setItem(POS_KEY, JSON.stringify({lat: latitude, lan: longitude}));
 
-        this.setState({isLoadingGeoLocation: false});
-        this.loadNearbyPost();
+    onSuccessLoadGeoLocation = (position) => {
+        console.log(position);
+        const { latitude, longitude } = position.coords;
+        localStorage.setItem(POS_KEY, JSON.stringify({ lat: latitude, lon: longitude }));
+        this.setState({ isLoadingGeoLocation: false });
+        this.loadNearbyPosts();
     }
-    onFailLoadGeoLocation =() => {
-        console.log("fail load geo location");
-        this.setState({isLoadingGeoLocation: false, error: 'Failed to load geo Location'});
+
+    onFailedLoadGeoLocation = () => {
+        this.setState({ isLoadingGeoLocation: false, error: 'Failed to load geolocation.' });
     }
-    loadNearbyPost = () => {
-        const { lat, lon } = JSON.parse(localStorage.getItem(POS_KEY));
+
+    loadNearbyPosts = (center, radius) => {
+        const { lat, lon } = center ? center : JSON.parse(localStorage.getItem(POS_KEY));
+        const range = radius ? radius : 20;
         const token = localStorage.getItem(TOKEN_KEY);
-        fetch(`${API_ROOT}/search?lat=${lat}&lon=${lon}&range=20000`, {
+        this.setState({ isLoadingPosts: true, error: '', topic: 'around' });
+        return fetch(`${API_ROOT}/search?lat=${lat}&lon=${lon}&range=${range}`, {
             method: 'GET',
             headers: {
                 Authorization: `${AUTH_HEADER} ${token}`,
@@ -52,49 +58,117 @@ export class Home extends React.Component {
             throw new Error('Failed to load posts.');
         }).then((data) => {
             console.log(data);
-            this.setState({isLoadingPosts: false, posts: data ? data : []});
+            this.setState({ isLoadingPosts: false, posts: data ? data : [] });
         }).catch((e) => {
             console.log(e.message);
-            this.setState({isLoadingPosts: false, error: e.message});
+            this.setState({ isLoadingPosts: false, error: e.message });
         });
     }
 
-    getImagePost = () => {
-        const{error, isLoadGeoLocation, isLoadingPosts, posts }= this.state;
-        if (this.state.error) {
-            return <div> {this.state.error}</div>
-        }else if (isLoadGeoLocation){
-            return <Spin tip="Loading geoLocation"/>
-        }else if(isLoadingPosts){
-            return <Spin tip="Loading posts"/>
-        }else if(posts.length > 0){
-            const images = this.state.posts.map((post) => {
+    getPanelContent = (type) => {
+        const { error, isLoadingGeoLocation, isLoadingPosts, posts } = this.state;
+        if (error) {
+            return <div>{error}</div>
+        } else if(isLoadingGeoLocation) {
+            return <Spin tip="Loading geo location..."/>
+        } else if (isLoadingPosts) {
+            return <Spin tip="Loading posts..." />
+        } else if (posts.length > 0) {
+            return type === 'image' ? this.getImagePosts() : this.getVideoPosts();
+        } else {
+            return 'No nearby posts.';
+        }
+    }
+
+    getVideoPosts = () => {
+        return (
+            <Row gutter={32}>
+                {this.state.posts.filter((post) => post.type === 'video').map((post) => {
+                    return (
+                        <Col span={6} key={post.url}>
+                            <video src={post.url} controls className="video-block"/>
+                            <p>{post.user}: {post.message}</p>
+                        </Col>
+                    );
+                })}
+            </Row>
+        );
+    }
+
+    getImagePosts = () => {
+        const images = this.state.posts
+            .filter((post) => post.type === 'image')
+            .map((post) => {
                 return {
                     user: post.user,
                     src: post.url,
                     thumbnail: post.url,
-                    srcset: post.url,
                     caption: post.message,
                     thumbnailWidth: 400,
-                    thumbnailHeight: 300
+                    thumbnailHeight: 300,
                 }
+            });
+
+        return (<Gallery images={images}/>);
+    }
+
+    onTopicChange = (e) => {
+        const topic = e.target.value;
+        this.setState({ topic });
+        if (topic === 'around') {
+            this.loadNearbyPosts();
+        } else {
+            const token = localStorage.getItem(TOKEN_KEY);
+            this.setState({ isLoadingPosts: true, error: '' });
+            fetch(`${API_ROOT}/cluster?term=face`, {
+                method: 'GET',
+                headers: {
+                    Authorization: `${AUTH_HEADER} ${token}`,
+                },
+            }).then((response) => {
+                if (response.ok) {
+                    return response.json();
+                }
+                throw new Error(response.statusText);
             })
-            return (<Gallery images={images}/>)
-        }else{
-            return 'No nearby posts';
+                .then((data) => {
+                    console.log(data);
+                    this.setState({ isLoadingPosts: false, posts: data ? data : [] });
+                })
+                .catch((e) => {
+                    console.log(e);
+                    this.setState({ isLoadingPosts: false, error: 'Loading face images failed.'});
+                });
         }
     }
+
     render() {
-        const operations = <Button type="primary">Create New post</Button>;
+        const operations = <CreatePostButton loadNearbyPosts={this.loadNearbyPosts}/>;
         return (
-            <Tabs tabBarExtraContent={operations} className="main-tabs">
-                <TabPane tab="Image Post" key="1">
-                    {/*{this.state.isLoadingGeoLocation ? 'Loading geo location...' : 'Contetent 1'}*/}
-                    {this.getImagePost()}
-                </TabPane>
-                <TabPane tab="Video Post" key="2">Content of tab 2</TabPane>
-                <TabPane tab="Map" key="3">Content of tab 3</TabPane>
-            </Tabs>
+            <div className="home">
+                <RadioGroup onChange={this.onTopicChange} value={this.state.topic} className="topic-radio-group">
+                    <Radio value="around">Posts Around Me</Radio>
+                    <Radio value="face">Faces Around The World</Radio>
+                </RadioGroup>
+                <Tabs tabBarExtraContent={operations} className="main-tabs">
+                    <TabPane tab="Image Posts" key="1">
+                        {this.getPanelContent('image')}
+                    </TabPane>
+                    <TabPane tab="Video Posts" key="2">
+                        {this.getPanelContent('video')}
+                    </TabPane>
+                    <TabPane tab="Map" key="3">
+                        <AroundMap
+                            googleMapURL="https://maps.googleapis.com/maps/api/js?key=AIzaSyD3CEh9DXuyjozqptVB5LA-dN7MxWWkr9s&v=3.exp&libraries=geometry,drawing,places"
+                            loadingElement={<div style={{ height: `100%` }} />}
+                            containerElement={<div style={{ height: `800px` }} />}
+                            mapElement={<div style={{ height: `100%` }} />}
+                            posts={this.state.posts}
+                            loadNearbyPosts={this.loadNearbyPosts}
+                        />
+                    </TabPane>
+                </Tabs>
+            </div>
         );
     }
 }
