@@ -37,8 +37,9 @@ export class AroundMarker extends React.Component {
                             {isImagePost ?
                                 <img src={url} alt={message} className="around-marker-image"/>
                                 :
-                                <video src={url} controls className="around-marker-video"/>
+                                <video src={url} className="around-marker-video" controls/>
                             }
+
                             <p>{`${user}: ${message}`}</p>
                         </div>
                     </InfoWindow>

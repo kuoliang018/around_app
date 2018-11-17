@@ -21,7 +21,7 @@ class App extends Component {
     render() {
         return (
             <div className="App">
-                <TopBar isLoggedIn={this.state.isLoggedIn} handleLogout={this.handleLogout} />
+                <TopBar isLoggedIn={this.state.isLoggedIn} handleLogout={this.handleLogout}/>
                 <Main isLoggedIn={this.state.isLoggedIn} handleLogin={this.handleLogin}/>
             </div>
         );

@@ -45,7 +45,7 @@ export class Home extends React.Component {
         const { lat, lon } = center ? center : JSON.parse(localStorage.getItem(POS_KEY));
         const range = radius ? radius : 20;
         const token = localStorage.getItem(TOKEN_KEY);
-        this.setState({ isLoadingPosts: true, error: '', topic: 'around' });
+        this.setState({ isLoadingPosts: true, error: '' });
         return fetch(`${API_ROOT}/search?lat=${lat}&lon=${lon}&range=${range}`, {
             method: 'GET',
             headers: {
@@ -118,28 +118,32 @@ export class Home extends React.Component {
         if (topic === 'around') {
             this.loadNearbyPosts();
         } else {
-            const token = localStorage.getItem(TOKEN_KEY);
-            this.setState({ isLoadingPosts: true, error: '' });
-            fetch(`${API_ROOT}/cluster?term=face`, {
-                method: 'GET',
-                headers: {
-                    Authorization: `${AUTH_HEADER} ${token}`,
-                },
-            }).then((response) => {
-                if (response.ok) {
-                    return response.json();
-                }
-                throw new Error(response.statusText);
-            })
-                .then((data) => {
-                    console.log(data);
-                    this.setState({ isLoadingPosts: false, posts: data ? data : [] });
-                })
-                .catch((e) => {
-                    console.log(e);
-                    this.setState({ isLoadingPosts: false, error: 'Loading face images failed.'});
-                });
+            this.loadFacesAroundTheWorld();
         }
+    }
+
+    loadFacesAroundTheWorld = () => {
+        const token = localStorage.getItem(TOKEN_KEY);
+        this.setState({ isLoadingPosts: true, error: '' });
+        fetch(`${API_ROOT}/cluster?term=face`, {
+            method: 'GET',
+            headers: {
+                Authorization: `${AUTH_HEADER} ${token}`,
+            },
+        }).then((response) => {
+            if (response.ok) {
+                return response.json();
+            }
+            throw new Error(response.statusText);
+        })
+            .then((data) => {
+                console.log(data);
+                this.setState({ isLoadingPosts: false, posts: data ? data : [] });
+            })
+            .catch((e) => {
+                console.log(e);
+                this.setState({ isLoadingPosts: false, error: 'Loading face images failed.'});
+            });
     }
 
     render() {
@@ -165,6 +169,8 @@ export class Home extends React.Component {
                             mapElement={<div style={{ height: `100%` }} />}
                             posts={this.state.posts}
                             loadNearbyPosts={this.loadNearbyPosts}
+                            loadFacesAroundTheWorld={this.loadFacesAroundTheWorld}
+                            topic={this.state.topic}
                         />
                     </TabPane>
                 </Tabs>
